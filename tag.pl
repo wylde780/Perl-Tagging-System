@@ -9,14 +9,31 @@ $dbfile = "/vagina/tag.db";
 $db = DBI->connect("dbi:SQLite:/vagina/tag.db", "", "",
 {RaiseError => 1, AutoCommit => 1});
 
-chomp(@files = `find $ARGV[0] -type f`);
-open TMPFILE, ">$tmpfile" or die $!;
-$start = Time::HiRes::gettimeofday();
-&GetValues();
-
+$argCount = @ARGV;
+if(!defined(@ARGV))
+{
+	print "Usage ./tag.pl PATH tags\nExample ./tag.pl /home home fileserver personal\n";
+}else{
+	$searchPath = $ARGV[0];
+	if($argCount > 0)
+	{
+		shift(@ARGV);
+		$tags = join(",",@ARGV);
+		if($tags eq "") 
+		{
+			$tags = "Random";
+		}
+	
+		print "TAGS -> $tags\n";
+	}
+	&GetValues();
+}
 
 sub GetValues()
 {
+	chomp(@files = `find $searchPath -type f`);
+	open TMPFILE, ">$tmpfile" or die $!;
+	$start = Time::HiRes::gettimeofday();
 	print TMPFILE "BEGIN;\n";
 	foreach(@files)
 	{
@@ -38,14 +55,15 @@ sub CheckRows($md5)
 	$sqlTemp = @sqlMD5;
 	if($sqlTemp eq '0')
 	{
-		print TMPFILE "insert into items ( filename, path, tags, unixUser, md5 ) VALUES ( \"$filename\", \"$path\",  'Generic Tag', '$user', '$md5' );\n";		
+		print TMPFILE "insert into items ( filename, path, tags, unixUser, md5 ) VALUES ( \"$filename\", \"$path\",  \"$tags\", '$user', '$md5' );\n";		
 	}
 }
-$end = Time::HiRes::gettimeofday();
-printf("%.2f\n", $end - $start);
 
-@insert = `sqlite3 $dbfile < $tmpfile`;
-close(TMPFILE);
-
-$db->disconnect;
-
+if(defined(@ARGV))
+{
+	$end = Time::HiRes::gettimeofday();
+	printf("%.2f\n", $end - $start);
+#	$db->disconnect;
+	@insert = `sqlite3 $dbfile < $tmpfile`;
+	close(TMPFILE);
+}	
